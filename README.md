@@ -1,5 +1,75 @@
 # FERNACOM NPM GeoIP Brasil
 
-Ferramenta para restringir Proxy Hosts selecionados do Nginx Proxy Manager a endereços IP brasileiros.
+Controle geográfico para **Proxy Hosts selecionados** do Nginx Proxy Manager, usando redes IPv4/IPv6 brasileiras do IPdeny. Projeto independente da **FERNACOM Informática Corporativa**.
 
-**Em preparação:** não execute scripts sem revisão. A instalação não deve bloquear domínios automaticamente.
+> **Versão inicial / teste em homologação obrigatório.** Baseado na implantação da Bluesea Catering (NPM 2.10.3, OpenResty). Ainda não homologado em instalações limpas ou em Docker.
+
+## Instalação
+
+Execute **no ambiente onde o NPM/OpenResty roda**, com root, Bash, Python 3, curl, nginx e acesso a `/data`. Faça backup completo do NPM (`/data`, banco de dados e certificados).
+
+```bash
+git clone https://github.com/Fernacom-Sistemas/fernacom-npm-geoip-br.git
+cd fernacom-npm-geoip-br
+sudo bash scripts/install.sh
+```
+
+Em Docker, o script deve rodar **dentro do contêiner**, caso ele tenha as dependências. Não execute no host Docker sem adaptar a instalação. O script **não ativa o bloqueio em nenhum domínio**. Se encontrar regras FERNACOM existentes, interrompe para exigir migração manual.
+
+## Ativação por domínio
+
+NPM → **Hosts → Proxy Hosts → Edit → Advanced**. Preserve as configurações existentes e acrescente **somente no host escolhido**:
+
+```nginx
+# FERNACOM - GeoIP Brasil
+if ($fernacom_bloquear_geo) {
+    return 403;
+}
+```
+
+Salve, execute `nginx -t` e teste de uma conexão brasileira **externa** (resposta normal) e estrangeira (HTTP 403). Testar no próprio NPM não prova o bloqueio: NAT loopback pode chegar com IP privado.
+
+## Atualização
+
+```bash
+sudo bash scripts/update.sh
+```
+
+O script busca listas IPv4/IPv6 no IPdeny, valida CIDRs e volume mínimo, cria backup, testa o Nginx e recarrega. Se a validação ou o reload falhar, tenta restaurar a lista anterior.
+
+Depois de homologar, exemplo de agendamento semanal:
+
+```cron
+15 4 * * 1 /bin/bash /caminho/absoluto/fernacom-npm-geoip-br/scripts/update.sh >> /var/log/fernacom-geoip.log 2>&1
+```
+
+## Arquivos instalados
+
+- `/data/geoip-br/br-allow.conf` — lista brasileira e exceções privadas
+- `/data/geoip-br/backups/` — backups
+- `/data/nginx/custom/fernacom-geoip-br.conf` — variáveis `geo` e `map`
+- `/data/nginx/custom/http_top.conf` — inclui o arquivo gerenciado
+
+## Reversão
+
+1. Remova a regra `if ($fernacom_bloquear_geo) { return 403; }` do **Advanced** de todos os Proxy Hosts e salve.
+2. Confirme que nenhum host depende das variáveis.
+3. Remova o `include /data/nginx/custom/fernacom-geoip-br.conf;` de `http_top.conf`.
+4. Valide `nginx -t` e recarregue `nginx -s reload`. Preserve backups até confirmar estabilidade.
+
+Não edite apenas `/data/nginx/proxy_host/*.conf`, pois o NPM regenera esses arquivos.
+
+## Segurança e limitações
+
+- O filtro usa `$realip_remote_addr`, IP original do socket. **Atrás de CDN, balanceador ou proxy intermediário**, pode classificar o intermediário, não o visitante.
+- A classificação geográfica não é infalível. VPNs podem contornar a regra e alguns IPs brasileiros podem ser negados.
+- As exceções locais `10/8`, `172.16/12`, `192.168/16`, `127/8`, `::1` são permitidas por padrão; revise a topologia.
+- O caminho `/.well-known/acme-challenge/` é isento da regra geográfica. **Teste a renovação real** de certificados; o NPM pode redirecionar HTTP para HTTPS.
+- Restringe apenas HTTP/HTTPS dos Proxy Hosts selecionados; não cobre SMTP, IMAP, POP3 ou portas independentes.
+- Não substitui MFA, VPN, firewall, atualizações de segurança ou resposta a comprometimento.
+- O projeto pressupõe caminhos padrão `/data`; `DATA_DIR` alternativo é recusado.
+- A atualização depende das fontes externas IPdeny. Monitore logs do cron e evite atualizações automáticas sem homologação.
+
+## Licença
+
+MIT — © 2026 FERNACOM Informática Corporativa.
