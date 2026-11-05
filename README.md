@@ -4,7 +4,7 @@ Controle geográfico para **Proxy Hosts selecionados** do Nginx Proxy Manager, u
 
 > **Versão inicial / teste em homologação obrigatório.** Baseado na implantação da Bluesea Catering (NPM 2.10.3, OpenResty). Ainda não homologado em instalações limpas ou em Docker.
 
-## Instalação
+## Política de preservação\n\n- GeoIP **ativo**: manter exatamente como está.\n- GeoIP **comentado**: manter exatamente como está.\n- Sem GeoIP: inserir bloco comentado **somente após autenticação e `--apply`**.\n- O instalador configura apenas as variáveis globais; **não altera os Proxy Hosts automaticamente**.\n- Reexecutar o anotador permite incluir hosts criados posteriormente.\n\n## Instalação
 
 Execute **no ambiente onde o NPM/OpenResty roda**, com root, Bash, Python 3, curl, nginx e acesso a `/data`. Faça backup completo do NPM (`/data`, banco de dados e certificados).
 
@@ -34,16 +34,15 @@ Salve, execute `nginx -t` e teste de uma conexão brasileira **externa** (respos
 
 O script `scripts/annotate-hosts.py` utiliza a **API administrativa do NPM** para acrescentar o exemplo comentado na aba **Advanced** de todos os Proxy Hosts existentes, sem apagar o conteúdo anterior. Não edita diretamente o banco de dados nem os arquivos gerados pelo NPM.
 
-**Por segurança, esta etapa exige um token administrativo do NPM e uma confirmação explícita**; o instalador básico não modifica os hosts. Antes de aplicar, obtenha um token administrativo pela API de autenticação do seu NPM e disponibilize-o somente como variável de ambiente (não o cole em tickets, chats ou repositórios). Exemplo:
+**Por segurança, esta etapa exige autenticação administrativa e a opção explícita `--apply`**; o instalador básico não modifica os hosts. Não compartilhe senhas nem tokens. Execute no próprio LXC do NPM:
 
-```bash
-export NPM_API_URL=http://127.0.0.1:81
-read -rsp 'Token administrativo do NPM: ' NPM_TOKEN; echo
-export NPM_TOKEN
+\`\`\`bash
+cd /fernacom-npm-geoip-br
+source scripts/auth.sh                    # solicita e-mail e senha sem exibi-los
 python3 scripts/annotate-hosts.py          # prévia, somente leitura
-python3 scripts/annotate-hosts.py --apply  # grava em todos os hosts elegíveis
+python3 scripts/annotate-hosts.py --apply  # somente após conferir a prévia
 unset NPM_TOKEN
-```
+\`\`\`
 
 Antes de executar `--apply`, faça backup completo do NPM. O script também grava um JSON dos hosts em `/data/geoip-br/backups/`, com permissão 600. Se a API retornar erro em algum host, interrompe a execução; hosts já alterados não são revertidos automaticamente. Revise o backup e o painel antes de tentar novamente.
 
@@ -59,7 +58,7 @@ O bloco inserido será:
 # ============================================
 ```
 
-Para ativar em um domínio, remova apenas os `#` das três linhas do `if` e salve. O script ignora hosts que já contêm `$fernacom_bloquear_geo`, para não duplicar regras. **Teste primeiro em um NPM de homologação**: a estrutura da API pode variar conforme a versão.
+Para ativar em um domínio, remova apenas os `#` das três linhas do `if` e salve. O script ignora hosts que já contêm `$fernacom_bloquear_geo`, **mesmo se o bloqueio estiver ativo**: não comenta, não desativa, não duplica e não altera esses hosts. Para hosts sem GeoIP, adiciona somente um exemplo comentado. **Teste primeiro em um NPM de homologação**: a estrutura da API pode variar conforme a versão.
 
 ## Atualização
 
