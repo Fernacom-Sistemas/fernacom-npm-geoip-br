@@ -2,7 +2,7 @@
 
 Controle geográfico para **Proxy Hosts selecionados** do Nginx Proxy Manager, usando redes IPv4/IPv6 brasileiras do IPdeny. Projeto independente da **FERNACOM Informática Corporativa**.
 
-> **Versão inicial / teste em homologação obrigatório.** Baseado na implantação da Bluesea Catering (NPM 2.10.3, OpenResty). Ainda não homologado em instalações limpas ou em Docker.
+> **Versão inicial / teste em homologação obrigatório.** Baseado na implantação da (NPM 2.10.3, OpenResty). Ainda não homologado em instalações limpas ou em Docker.
 
 ## Política de preservação\n\n- GeoIP **ativo**: manter exatamente como está.\n- GeoIP **comentado**: manter exatamente como está.\n- Sem GeoIP: inserir bloco comentado **somente após autenticação e `--apply`**.\n- O instalador configura apenas as variáveis globais; **não altera os Proxy Hosts automaticamente**.\n- Reexecutar o anotador permite incluir hosts criados posteriormente.\n\n## Instalação
 
