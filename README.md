@@ -36,13 +36,13 @@ O script `scripts/annotate-hosts.py` utiliza a **API administrativa do NPM** par
 
 **Por segurança, esta etapa exige autenticação administrativa e a opção explícita `--apply`**; o instalador básico não modifica os hosts. Não compartilhe senhas nem tokens. Execute no próprio LXC do NPM:
 
-\`\`\`bash
+```bash
 cd /fernacom-npm-geoip-br
 source scripts/auth.sh                    # solicita e-mail e senha sem exibi-los
 python3 scripts/annotate-hosts.py          # prévia, somente leitura
 python3 scripts/annotate-hosts.py --apply  # somente após conferir a prévia
 unset NPM_TOKEN
-\`\`\`
+```
 
 Antes de executar `--apply`, faça backup completo do NPM. O script também grava um JSON dos hosts em `/data/geoip-br/backups/`, com permissão 600. Se a API retornar erro em algum host, interrompe a execução; hosts já alterados não são revertidos automaticamente. Revise o backup e o painel antes de tentar novamente.
 
