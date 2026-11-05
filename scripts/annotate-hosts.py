@@ -10,7 +10,6 @@ import os
 import pathlib
 import sys
 import urllib.error
-import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
 
@@ -33,6 +32,7 @@ def main():
     parser.add_argument("--apply", action="store_true", help="Write via NPM API; default is preview")
     parser.add_argument("--backup-dir", default="/data/geoip-br/backups")
     args = parser.parse_args()
+    os.umask(0o077)
     token = os.environ.get("NPM_TOKEN")
     if not token:
         sys.exit("ERRO: defina NPM_TOKEN (token administrativo obtido no NPM).")
@@ -80,8 +80,11 @@ def main():
     for host in candidates:
         host_id = int(host["id"])
         current = request("GET", f"/nginx/proxy-hosts/{host_id}")
-        if current.get("advanced_config") != host.get("advanced_config"):
+        if current.get("advanced_config") != host.get("advanced_config") or current.get("domain_names") != host.get("domain_names"):
             sys.exit(f"ERRO: host {host_id} alterado desde a prévia; interrompendo.")
+        if "$fernacom_bloquear_geo" in (current.get("advanced_config") or ""):
+            print(f"Host {host_id}: GeoIP já presente; preservado")
+            continue
         # Explicit allowlist: do not send id, owner, created_on, modified_on,
         # certificate object or other read-only fields back to the API.
         payload = {key: current[key] for key in FIELDS if key in current}
@@ -89,10 +92,10 @@ def main():
         payload["advanced_config"] = advanced.rstrip() + ("\n\n" if advanced.strip() else "") + BLOCK + "\n"
         request("PUT", f"/nginx/proxy-hosts/{host_id}", payload)
         check = request("GET", f"/nginx/proxy-hosts/{host_id}")
-        if MARKER not in (check.get("advanced_config") or ""):
+        if check.get("advanced_config") != payload["advanced_config"]:
             sys.exit(f"ERRO: API não confirmou atualização do host {host_id}.")
         print(f"Host {host_id}: bloco comentado inserido e confirmado")
-    print("Concluído. Bloqueio GeoIP permanece desativado em todos os hosts atualizados.")
+    print("Concluído. Hosts com GeoIP preexistente foram preservados; novos blocos estão comentados.")
 if __name__ == "__main__":
     try:
         main()
