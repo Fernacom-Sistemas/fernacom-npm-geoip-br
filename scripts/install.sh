@@ -35,7 +35,7 @@ rollback() {
   rm -f "$MANAGED"
   nginx -t >/dev/null 2>&1 && nginx -s reload >/dev/null 2>&1 || true
 }
-"$SCRIPT_DIR/update.sh" --initial
+bash "$SCRIPT_DIR/update.sh" --initial
 cat > "$MANAGED" <<'NGINX'
 # FERNACOM - GeoIP Brasil: contexto http
 # IP original do socket; CDN e proxies intermediários requerem avaliação.
