@@ -29,6 +29,38 @@ if ($fernacom_bloquear_geo) {
 
 Salve, execute `nginx -t` e teste de uma conexão brasileira **externa** (resposta normal) e estrangeira (HTTP 403). Testar no próprio NPM não prova o bloqueio: NAT loopback pode chegar com IP privado.
 
+
+## Inserir o bloco comentado em todos os Proxy Hosts
+
+O script `scripts/annotate-hosts.py` utiliza a **API administrativa do NPM** para acrescentar o exemplo comentado na aba **Advanced** de todos os Proxy Hosts existentes, sem apagar o conteúdo anterior. Não edita diretamente o banco de dados nem os arquivos gerados pelo NPM.
+
+**Por segurança, esta etapa exige um token administrativo do NPM e uma confirmação explícita**; o instalador básico não modifica os hosts. Antes de aplicar, obtenha um token administrativo pela API de autenticação do seu NPM e disponibilize-o somente como variável de ambiente (não o cole em tickets, chats ou repositórios). Exemplo:
+
+```bash
+export NPM_API_URL=http://127.0.0.1:81
+read -rsp 'Token administrativo do NPM: ' NPM_TOKEN; echo
+export NPM_TOKEN
+python3 scripts/annotate-hosts.py          # prévia, somente leitura
+python3 scripts/annotate-hosts.py --apply  # grava em todos os hosts elegíveis
+unset NPM_TOKEN
+```
+
+Antes de executar `--apply`, faça backup completo do NPM. O script também grava um JSON dos hosts em `/data/geoip-br/backups/`, com permissão 600. Se a API retornar erro em algum host, interrompe a execução; hosts já alterados não são revertidos automaticamente. Revise o backup e o painel antes de tentar novamente.
+
+O bloco inserido será:
+
+```nginx
+# ============================================
+# FERNACOM - GEOIP BRASIL (DESATIVADO)
+# Remova os # das 3 linhas abaixo para ativar.
+# if ($fernacom_bloquear_geo) {
+#     return 403;
+# }
+# ============================================
+```
+
+Para ativar em um domínio, remova apenas os `#` das três linhas do `if` e salve. O script ignora hosts que já contêm `$fernacom_bloquear_geo`, para não duplicar regras. **Teste primeiro em um NPM de homologação**: a estrutura da API pode variar conforme a versão.
+
 ## Atualização
 
 ```bash
